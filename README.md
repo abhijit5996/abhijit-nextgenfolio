@@ -1,6 +1,6 @@
 # Abhijit — NextGen Portfolio
 
->A modern interactive developer portfolio showcasing projects, skills, and a live AI assistant.
+> A modern interactive developer portfolio showcasing projects, skills, and a live AI assistant.
 
 ## Overview
 
