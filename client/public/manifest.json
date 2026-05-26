@@ -1,0 +1,17 @@
+{
+  "name": "Abhijit Das — Developer OS",
+  "short_name": "Abhijit Das",
+  "description": "Cinematic interactive portfolio of Abhijit Das — Full Stack Developer, AI/ML Enthusiast, Modern UI Engineer.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0820",
+  "theme_color": "#0b0820",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
