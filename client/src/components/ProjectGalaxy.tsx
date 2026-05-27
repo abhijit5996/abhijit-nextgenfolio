@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { projects, type Project } from "@/lib/portfolio-data";
+import { useGalaxyPositions, GalaxySvg, GalaxyCore, GalaxyNode, BASE_ORBITS, BASE_SIZE } from "./galaxy/GalaxyEngine";
 
 export function ProjectGalaxy() {
   const [active, setActive] = useState<Project | null>(null);
@@ -14,17 +15,7 @@ export function ProjectGalaxy() {
   }, []);
 
   const SIZE = 680;
-  const C = SIZE / 2;
-  const R = { inner: 130, middle: 215, outer: 295 } as const;
-
-  const positions = (["inner", "middle", "outer"] as const).flatMap((band) => {
-    const list = orbits[band];
-    const r = R[band];
-    return list.map((p, i) => {
-      const angle = (i / list.length) * Math.PI * 2 - Math.PI / 2 + (band === "middle" ? Math.PI / list.length : 0);
-      return { p, band, x: C + Math.cos(angle) * r, y: C + Math.sin(angle) * r };
-    });
-  });
+  const positions = useGalaxyPositions(orbits, SIZE);
 
   return (
     <div className="relative">
@@ -39,141 +30,51 @@ export function ProjectGalaxy() {
           }}
         />
 
-        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="absolute inset-0 h-full w-full">
-          <defs>
-            <radialGradient id="pg-core" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="oklch(0.95 0.18 200)" stopOpacity="1" />
-              <stop offset="60%" stopColor="oklch(0.65 0.22 305)" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="transparent" />
-            </radialGradient>
-            <linearGradient id="pg-link" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="oklch(0.82 0.16 195)" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="oklch(0.7 0.22 325)" stopOpacity="0.05" />
-            </linearGradient>
-          </defs>
-
-          {/* orbit rings */}
-          {(["inner", "middle", "outer"] as const).map((band, i) => (
-            <circle
-              key={band}
-              cx={C} cy={C} r={R[band]}
-              fill="none"
-              stroke="oklch(0.78 0.18 200 / 0.22)"
-              strokeWidth={1}
-              strokeDasharray={i === 0 ? undefined : i === 1 ? "3 7" : "1 10"}
-            />
-          ))}
-
-          {/* connecting lines */}
-          {positions.map(({ p, x, y }) => (
-            <line
-              key={`L-${p.name}`}
-              x1={C} y1={C} x2={x} y2={y}
-              stroke="url(#pg-link)"
-              strokeWidth={hover === p.name ? 2 : 0.8}
-              opacity={hover && hover !== p.name ? 0.12 : 1}
-              style={{ transition: "all .3s" }}
-            />
-          ))}
-
-          {/* constellation links between neighbors of outer ring */}
-          {orbits.outer.map((p, i, arr) => {
-            const a1 = (i / arr.length) * Math.PI * 2 - Math.PI / 2;
-            const a2 = ((i + 1) / arr.length) * Math.PI * 2 - Math.PI / 2;
-            return (
-              <line key={`out-${p.name}`}
-                x1={C + Math.cos(a1) * R.outer} y1={C + Math.sin(a1) * R.outer}
-                x2={C + Math.cos(a2) * R.outer} y2={C + Math.sin(a2) * R.outer}
-                stroke="oklch(0.78 0.18 200 / 0.22)" strokeWidth={0.6} strokeDasharray="2 4" />
-            );
-          })}
-
-          {/* core glow */}
-          <circle cx={C} cy={C} r={90} fill="url(#pg-core)" />
-        </svg>
+        <GalaxySvg size={SIZE} positions={positions} hover={hover} setHover={setHover} coreRadius={90} />
 
         {/* rotating decorative rings with comet */}
-        {(["inner", "middle", "outer"] as const).map((band, i) => (
-          <div key={`spin-${band}`}
-            className="absolute left-1/2 top-1/2 pointer-events-none"
-            style={{
-              width: R[band] * 2, height: R[band] * 2,
-              transform: "translate(-50%,-50%)",
-              animation: `orbit ${60 + i * 30}s linear infinite ${i % 2 ? "reverse" : ""}`,
-            }}>
-            <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full"
-              style={{
-                background: ["oklch(0.82 0.16 195)","oklch(0.65 0.22 305)","oklch(0.7 0.22 325)"][i],
-                boxShadow: "0 0 18px currentColor",
-                color: ["oklch(0.82 0.16 195)","oklch(0.65 0.22 305)","oklch(0.7 0.22 325)"][i],
-              }} />
-          </div>
-        ))}
+        {(["inner", "middle", "outer"] as const).map((band, i) => {
+          const scale = SIZE / BASE_SIZE;
+          const r = BASE_ORBITS[band] * scale;
+          return (
+            <div key={`spin-${band}`} className="absolute left-1/2 top-1/2 pointer-events-none" style={{ width: r * 2, height: r * 2, transform: "translate(-50%,-50%)", animation: `orbit ${60 + i * 30}s linear infinite ${i % 2 ? "reverse" : ""}` }}>
+              <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full" style={{ background: ["oklch(0.82 0.16 195)","oklch(0.65 0.22 305)","oklch(0.7 0.22 325)"][i], boxShadow: "0 0 18px currentColor", color: ["oklch(0.82 0.16 195)","oklch(0.65 0.22 305)","oklch(0.7 0.22 325)"][i] }} />
+            </div>
+          );
+        })}
 
         {/* core */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          onClick={() => setActive(projects[0])}
-          className="absolute left-1/2 top-1/2 grid h-32 w-32 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full glass-strong animate-pulse-glow z-10"
-          aria-label="project core"
-          style={{
-            left: "50%", top: "50%",
-          }}
-        >
-          <div className="text-center">
-            <div className="font-mono text-[9px] uppercase tracking-[0.3em] text-accent">// core</div>
-            <div className="mt-0.5 font-display text-2xl font-bold text-gradient">{projects.length}+</div>
-            <div className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">stations</div>
-          </div>
-        </motion.button>
+        <GalaxyCore size={SIZE} label="// core" count={`${projects.length}+`} onClick={() => setActive(projects[0])} />
 
         {/* project portals */}
-        {positions.map(({ p, band, x, y }, i) => {
+        {positions.map(({ item, band, x, y }, i) => {
+          const p = item as Project;
           const isHover = hover === p.name;
           const isDim = hover && !isHover;
           const small = band === "outer";
-          const pct = `${(x / SIZE) * 100}%`;
-          const pcy = `${(y / SIZE) * 100}%`;
           return (
-            <motion.button
-              key={p.name}
-              initial={{ opacity: 0, scale: 0.3 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              animate={{ opacity: isDim ? 0.35 : 1, scale: isHover ? 1.2 : 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.05, type: "spring", stiffness: 200, damping: 18 }}
-              onMouseEnter={() => setHover(p.name)}
-              onMouseLeave={() => setHover(null)}
-              onFocus={() => setHover(p.name)}
-              onBlur={() => setHover(null)}
-              onClick={() => setActive(p)}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 group focus:outline-none ${small ? "h-12 w-12" : "h-16 w-16"}`}
-              style={{ left: pct, top: pcy }}
-            >
-              <span className="absolute inset-0 rounded-full glass animate-pulse-glow" />
-              <span className="absolute inset-1 grid place-items-center rounded-full bg-gradient-to-br from-primary/30 via-accent/30 to-[oklch(0.7_0.22_325/0.3)] font-mono text-[10px] font-bold text-primary-foreground">
-                {p.tag.slice(0, 2)}
-              </span>
-              {isHover && (
-                <span className="pointer-events-none absolute inset-[-8px] rounded-full"
-                  style={{ boxShadow: "0 0 35px oklch(0.78 0.18 200 / 0.8), inset 0 0 16px oklch(0.78 0.18 200 / 0.4)" }} />
-              )}
+            <React.Fragment key={p.name}>
+              <GalaxyNode item={p} x={x} y={y} isHover={isHover} isDim={isDim} onHover={(s: string | null) => setHover(s)} onClick={(it: any) => setActive(it)} small={small} />
               <AnimatePresence>
                 {isHover && (
                   <motion.div
+                    key={`tooltip-${p.name}`}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 6 }}
-                    className="pointer-events-none absolute left-1/2 top-full mt-3 w-48 -translate-x-1/2 glass-strong rounded-lg p-2.5 text-left z-20"
+                    className="pointer-events-none absolute left-[50%] top-[50%] z-20"
+                    style={{ left: `${x}px`, top: `${y + 32}px`, translate: "-50% 0" }}
                   >
-                    <div className="font-mono text-[9px] tracking-widest text-accent">{p.tag}</div>
-                    <div className="font-display text-sm font-semibold text-glow">{p.name}</div>
-                    <div className="mt-1 text-[10px] text-foreground/75 leading-snug">{p.desc.slice(0, 70)}…</div>
-                    <div className="mt-1.5 font-mono text-[9px] text-primary">▷ click to dock</div>
+                    <div className="pointer-events-none absolute left-1/2 top-full mt-3 w-48 -translate-x-1/2 glass-strong rounded-lg p-2.5 text-left z-20">
+                      <div className="font-mono text-[9px] tracking-widest text-accent">{p.tag}</div>
+                      <div className="font-display text-sm font-semibold text-glow">{p.name}</div>
+                      <div className="mt-1 text-[10px] text-foreground/75 leading-snug">{p.desc.slice(0, 70)}…</div>
+                      <div className="mt-1.5 font-mono text-[9px] text-primary">▷ click to dock</div>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </motion.button>
+            </React.Fragment>
           );
         })}
       </div>

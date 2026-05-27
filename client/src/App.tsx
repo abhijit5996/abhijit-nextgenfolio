@@ -33,6 +33,13 @@ function PortfolioApp() {
       return false;
     }
   });
+  const [showMain, setShowMain] = useState(() => {
+    try {
+      return typeof window !== "undefined" && !!sessionStorage.getItem("bootSeen");
+    } catch {
+      return true;
+    }
+  });
 
   // Nebula runs beneath everything so we can blend into it — keep it mounted during boot
 
@@ -82,11 +89,14 @@ function PortfolioApp() {
   useEffect(() => {
     const onResume = () => setResumeOpen(true);
     const onScrollGalaxy = () => galaxyRef.current?.scrollIntoView({ behavior: lite ? "auto" : "smooth", block: "start" });
+    const onRevealMain = () => setShowMain(true);
     window.addEventListener("portfolio:resume", onResume);
     window.addEventListener("portfolio:scroll-galaxy", onScrollGalaxy);
+    window.addEventListener("portfolio:reveal", onRevealMain);
     return () => {
       window.removeEventListener("portfolio:resume", onResume);
       window.removeEventListener("portfolio:scroll-galaxy", onScrollGalaxy);
+      window.removeEventListener("portfolio:reveal", onRevealMain);
     };
   }, [lite]);
 
@@ -101,10 +111,21 @@ function PortfolioApp() {
     <main className="relative min-h-screen overflow-hidden font-display">
       <NebulaBackground />
 
-      {showBoot && <BootSequence onFinish={() => setShowBoot(false)} />}
+      {showBoot && (
+        <BootSequence
+          onFinish={() => {
+            setShowBoot(false);
+            setShowMain(true);
+          }}
+        />
+      )}
 
-      {!showBoot && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+      <motion.div
+        initial={false}
+        animate={{ opacity: showMain ? 1 : 0, y: showMain ? 0 : 8 }}
+        transition={{ duration: showMain ? 0.40 : 0, delay: showMain ? 0.40 : 0, ease: [0.16, 1, 0.3, 1] }}
+        style={{ visibility: showMain ? "visible" : "hidden", pointerEvents: showMain ? "auto" : "none" }}
+      >
           <header className="fixed inset-x-0 top-0 z-30">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4">
           <div className="flex items-center gap-3">
@@ -399,7 +420,6 @@ function PortfolioApp() {
       <ResumeSequence open={resumeOpen} onClose={() => setResumeOpen(false)} />
       <AIAssistant onCommand={runCommand} />
         </motion.div>
-      )}
     </main>
   );
 }

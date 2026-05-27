@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * GPU-friendly animated nebula background: layered canvas particles with
@@ -8,6 +8,8 @@ export function NebulaBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouse = useRef({ x: 0.5, y: 0.5 });
   const scroll = useRef(0);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [boost, setBoost] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -98,12 +100,44 @@ export function NebulaBackground() {
     };
   }, []);
 
+  // listen for boot activation to briefly boost visuals
+  useEffect(() => {
+    const onBoost = () => {
+      setBoost(true);
+      window.setTimeout(() => setBoost(false), 900);
+    };
+    const onProgressPulse = () => {
+      setBoost(true);
+      window.setTimeout(() => setBoost(false), 520);
+    };
+    window.addEventListener("boot:activate", onBoost as EventListener);
+    window.addEventListener("boot:progressComplete", onProgressPulse as EventListener);
+    return () => {
+      window.removeEventListener("boot:activate", onBoost as EventListener);
+      window.removeEventListener("boot:progressComplete", onProgressPulse as EventListener);
+    };
+  }, []);
+
+  // inject small styles for the boost effect
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const styleId = "nebula-boost-styles";
+    if (document.getElementById(styleId)) return;
+    const s = document.createElement("style");
+    s.id = styleId;
+    s.textContent = `
+      .nebula-root.nebula-boost canvas { transform: scale(1.02); filter: brightness(1.12) contrast(1.05) blur(0.6px); transition: transform 700ms cubic-bezier(.2,.9,.2,1), filter 700ms cubic-bezier(.2,.9,.2,1); }
+      .nebula-root.nebula-boost > div:first-child { opacity: 1 !important; }
+    `;
+    document.head.appendChild(s);
+  }, []);
+
   return (
-    <>
+    <div ref={rootRef} className={`nebula-root ${boost ? "nebula-boost" : ""}`}>
       <div className="fixed inset-0 -z-20 bg-[radial-gradient(ellipse_at_top,oklch(0.2_0.08_290/0.6),oklch(0.08_0.04_270)_60%)]" />
       <canvas ref={canvasRef} className="fixed inset-0 -z-10 h-full w-full" aria-hidden />
       <div className="pointer-events-none fixed inset-0 -z-10 [background:radial-gradient(circle_at_center,transparent_55%,oklch(0.05_0.02_270/0.85))]" aria-hidden />
       <div className="pointer-events-none fixed inset-0 -z-10 opacity-[0.06] mix-blend-overlay [background-image:repeating-linear-gradient(0deg,transparent_0,transparent_2px,oklch(1_0_0/0.4)_3px,transparent_4px)]" aria-hidden />
-    </>
+    </div>
   );
 }
