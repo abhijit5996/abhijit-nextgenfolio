@@ -6,6 +6,7 @@ import { AIAssistant } from "@/components/AIAssistant";
 import { SkillGalaxy } from "@/components/SkillGalaxy";
 import { ProjectGalaxy } from "@/components/ProjectGalaxy";
 import { ResumeSequence } from "@/components/ResumeSequence";
+import { BootSequence } from "@/components/BootSequence";
 import { PreferencesProvider, usePreferences } from "@/lib/preferences";
 import { profile, stats, projects } from "@/lib/portfolio-data";
 
@@ -25,6 +26,15 @@ function PortfolioApp() {
   const galaxyRef = useRef<HTMLDivElement>(null);
   const { reducedMotion, perfMode, toggleLite } = usePreferences();
   const lite = reducedMotion || perfMode;
+  const [showBoot, setShowBoot] = useState(() => {
+    try {
+      return typeof window !== "undefined" && !sessionStorage.getItem("bootSeen");
+    } catch {
+      return false;
+    }
+  });
+
+  // Nebula runs beneath everything so we can blend into it — keep it mounted during boot
 
   useEffect(() => {
     document.title = "Abhijit Das — Developer OS";
@@ -91,7 +101,11 @@ function PortfolioApp() {
     <main className="relative min-h-screen overflow-hidden font-display">
       <NebulaBackground />
 
-      <header className="fixed inset-x-0 top-0 z-30">
+      {showBoot && <BootSequence onFinish={() => setShowBoot(false)} />}
+
+      {!showBoot && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+          <header className="fixed inset-x-0 top-0 z-30">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4">
           <div className="flex items-center gap-3">
             <motion.div
@@ -144,7 +158,7 @@ function PortfolioApp() {
             </button>
           </div>
         </div>
-      </header>
+          </header>
 
       <aside className="fixed right-5 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-2 lg:flex">
         {[
@@ -384,6 +398,8 @@ function PortfolioApp() {
       <Terminal open={terminalOpen} onClose={() => setTerminalOpen(false)} onMinimize={() => setTerminalOpen(false)} />
       <ResumeSequence open={resumeOpen} onClose={() => setResumeOpen(false)} />
       <AIAssistant onCommand={runCommand} />
+        </motion.div>
+      )}
     </main>
   );
 }
